@@ -1,0 +1,7 @@
+imagenet/
+coco/
+*.jpg
+*.png
+*.csv 
+*DS_Store
+*pyc
