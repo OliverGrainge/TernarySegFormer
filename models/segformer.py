@@ -5,8 +5,14 @@ import requests
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
+import os 
 
-def _get_segformer_model_and_processor(pretrained=False):
+
+os.sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '../NeuroCompress/'))
+
+import NeuroPress as NP
+
+def get_segformer_model_and_processor(pretrained=False):
     if pretrained: 
         model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b3-finetuned-ade-512-512")
         processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b3-finetuned-ade-512-512")
@@ -20,15 +26,13 @@ def _get_segformer_model_and_processor(pretrained=False):
 
 if __name__ == "__main__":
     # Load the model and processor
-    model, processor = _get_segformer_model_and_processor(pretrained=True)
+    model, processor = get_segformer_model_and_processor(pretrained=True)
 
     print(model.segformer.encoder)
     feature_extractor = model.segformer.encoder
 
     img = torch.randn(1, 3, 512, 512)
     out = feature_extractor(img)
-    print(out.last_hidden_state.shape)
-    raise Exception("Stop here")
     
 
     # Load and process the image

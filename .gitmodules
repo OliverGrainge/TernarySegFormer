@@ -1,0 +1,3 @@
+[submodule "NeuroCompress"]
+	path = NeuroCompress
+	url = git@github.com:OliverGrainge/NeuroCompress.git

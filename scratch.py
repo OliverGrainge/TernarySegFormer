@@ -1,3 +1,4 @@
+"""
 import os
 import torch
 import torchvision.transforms as T
@@ -8,12 +9,7 @@ import numpy as np
 
 class CocoSegmentationDataset(Dataset):
     def __init__(self, root, annotation_file, transform=None):
-        """
-        Args:
-            root (str): Root directory containing COCO images (e.g., 'data/train2017').
-            annotation_file (str): Path to COCO annotations file (e.g., 'data/annotations/instances_train2017.json').
-            transform (callable, optional): A function/transform to apply to the images.
-        """
+
         self.root = root
         self.coco = COCO(annotation_file)
         self.img_ids = list(self.coco.imgs.keys())
@@ -67,3 +63,20 @@ if __name__ == "__main__":
     image, mask = dataset[0]
     print("Image shape:", image.shape)
     print("Mask shape:", mask.shape)
+"""
+import torch
+
+from transformers import SegformerForSemanticSegmentation, AutoImageProcessor
+
+x = torch.randn(10, 3, 512, 512)
+segformer_model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
+global_avg_pool = torch.nn.AdaptiveAvgPool2d((2, 2))
+classifier = torch.nn.Linear(1024, 1000)
+
+features = segformer_model.segformer.encoder(x)
+features = features.last_hidden_state 
+print(features.shape)
+f = global_avg_pool(features).flatten(start_dim=1)
+print(f.shape)
+logits = classifier(f)
+print(logits.shape)

@@ -23,17 +23,31 @@ def download_coco(dest_folder="coco"):
     for key, url in urls.items():
         filename = os.path.join(dest_folder, url.split("/")[-1])
 
-        # Download the file if it doesn't exist
-        if not os.path.exists(filename):
+        # Get the size of the partially downloaded file
+        downloaded_size = os.path.getsize(filename) if os.path.exists(filename) else 0
+
+        # Get the total file size from the server
+        response = requests.head(url)
+        total_size = int(response.headers.get('content-length', 0))
+
+        if downloaded_size < total_size:
             print(f"Downloading {key}...")
-            response = requests.get(url, stream=True)
-            total_size = int(response.headers.get('content-length', 0))
-            block_size = 1024
-            with open(filename, "wb") as file, tqdm(total=total_size, unit='B', unit_scale=True, desc=key) as pbar:
-                for data in response.iter_content(block_size):
-                    file.write(data)
-                    pbar.update(len(data))
+            headers = {"Range": f"bytes={downloaded_size}-"}  # Request the remaining bytes
+            with requests.get(url, headers=headers, stream=True) as response, open(filename, "ab") as file:
+                with tqdm(
+                    total=total_size,
+                    initial=downloaded_size,
+                    unit='B',
+                    unit_scale=True,
+                    desc=key,
+                ) as pbar:
+                    for chunk in response.iter_content(1024):
+                        if chunk:  # Filter out keep-alive chunks
+                            file.write(chunk)
+                            pbar.update(len(chunk))
             print(f"Finished downloading {key}.")
+        else:
+            print(f"{key} is already fully downloaded.")
 
         # Extract the downloaded file
         with zipfile.ZipFile(filename, 'r') as zip_ref:
