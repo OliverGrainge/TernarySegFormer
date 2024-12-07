@@ -3,12 +3,13 @@ import torch.nn as nn
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from datasets import load_dataset
-from transformers import SegformerForSemanticSegmentation, AutoImageProcessor, get_cosine_schedule_with_warmup
+from transformers import SegformerForSemanticSegmentation, AutoImageProcessor, get_cosine_schedule_with_warmup, SegformerConfig
 import torch 
 from torch.utils.data import Dataset
 from datasets import load_dataset
 import numpy as np
 import torchvision.transforms as T
+from pytorch_lightning.callbacks import Callback
 
 
 class ImageNetDataset(Dataset):
@@ -32,8 +33,9 @@ class ImageNetDataset(Dataset):
         processed_image = self.processor(image, return_tensors="pt")['pixel_values'].squeeze(0)
         return processed_image, label
 
+
 class ImageNetClassifier(pl.LightningModule):
-    def __init__(self, segformer_model, processor, data_dir='./imagenet', num_classes=1000, learning_rate=1e-3, num_workers=0, batch_size=32, warmup_steps=1000, max_steps=None):
+    def __init__(self, segformer_model, processor, data_dir='./imagenet', num_classes=1000, learning_rate=5e-4, num_workers=0, batch_size=32, warmup_steps=1000, max_steps=None):
         super(ImageNetClassifier, self).__init__()
         self.save_hyperparameters(ignore=['segformer_model', 'processor'])
         self.data_dir = data_dir
@@ -113,11 +115,36 @@ class ImageNetClassifier(pl.LightningModule):
         )
         return val_loader
 
-# Example usage
+class PrintLossCallback(Callback):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        # Access the loss from the outputs dictionary and print it
+        if outputs is not None and 'loss' in outputs:
+            loss = outputs['loss'].detach().cpu().item()
+            print(f"Train Loss at batch {batch_idx}: {loss}")
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        # Print validation loss if needed
+        pass  # Uncomment and add logic to print validation loss if desired
+
+
 if __name__ == "__main__":
-    model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
-    processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
-    
+    configuration = SegformerConfig()
+    configuration.num_labels = 150
+    model = SegformerForSemanticSegmentation(configuration)
+    processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b3-finetuned-ade-512-512")
     model = ImageNetClassifier(model, processor, data_dir='../imagenet')
-    trainer = pl.Trainer(max_epochs=10, fast_dev_run=True)
+    
+    print_loss_callback = PrintLossCallback()
+
+    trainer = pl.Trainer(
+        enable_progress_bar=False,
+        max_epochs=100, 
+        overfit_batches=1, 
+        precision='16', 
+        accelerator='auto', 
+        callbacks=[print_loss_callback]
+    )
+
     trainer.fit(model)
+
+

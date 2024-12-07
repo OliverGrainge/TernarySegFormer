@@ -24,7 +24,7 @@ if args.training_method == "imagenet":
         model, processor = get_ternary_segformer_model_and_processor(pretrained=False)
         print(model)
 
-    model = ImageNetClassifier(model, processor, data_dir='./imagenet', batch_size=32, num_workers=12)
+    model = ImageNetClassifier(model, processor, data_dir='./imagenet', batch_size=48, num_workers=12, warmup_steps=200)
     wandb_logger = WandbLogger(
         project="SegFomer-" + args.training_method,
         log_model=True

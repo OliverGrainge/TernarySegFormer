@@ -14,13 +14,13 @@ import NeuroPress as NP
 
 def get_segformer_model_and_processor(pretrained=False):
     if pretrained: 
-        model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b3-finetuned-ade-512-512")
-        processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b3-finetuned-ade-512-512")
+        model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
+        processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
     else: 
         configuration = SegformerConfig()
         configuration.num_labels = 150
         model = SegformerForSemanticSegmentation(configuration)
-        processor = AutoImageProcessor.from_pretrained("nvidia/mit-b0") 
+        processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
 
     return model, processor
 

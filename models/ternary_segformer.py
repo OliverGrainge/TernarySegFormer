@@ -36,7 +36,7 @@ def get_ternary_segformer_model_and_processor(pretrained=False):
         configuration = SegformerConfig()
         configuration.num_labels = 150
         model = SegformerForSemanticSegmentation(configuration)
-        processor = AutoImageProcessor.from_pretrained("nvidia/mit-b0") 
+        processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512") 
         ternify_model(model)
     return model, processor
 
