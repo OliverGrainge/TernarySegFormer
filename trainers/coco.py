@@ -74,6 +74,10 @@ class COCOSegmenter(pl.LightningModule):
         masks = masks.squeeze(1).long()  # Ensure correct shape for CrossEntropyLoss
         outputs = self(images)
 
+        # Ensure outputs and masks are contiguous before reshaping
+        outputs = outputs.contiguous()
+        masks = masks.contiguous()
+
         # Reshape outputs and masks
         print(f"outputs.shape: {outputs.shape}, masks.shape: {masks.shape}")
         
@@ -85,6 +89,11 @@ class COCOSegmenter(pl.LightningModule):
         images, masks = batch
         masks = masks.squeeze(1).long()
         outputs = self(images)
+
+        # Ensure outputs and masks are contiguous before reshaping
+        outputs = outputs.contiguous()
+        masks = masks.contiguous()
+
         # Use reshape instead of view
         print(f"outputs.shape: {outputs.shape}, masks.shape: {masks.shape}")
         loss = self.criterion(outputs, masks)

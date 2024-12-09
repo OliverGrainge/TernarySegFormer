@@ -39,10 +39,10 @@ class CocoSegmentationDataset(Dataset):
             mask = np.maximum(mask, binary_mask * ann['category_id']) 
 
         image = self.image_processor(image)
-        mask = torch.from_numpy(mask).unsqueeze(0)
-        mask = Image.fromarray(mask.numpy().squeeze(), mode='L')
+        mask = torch.from_numpy(mask)
+        mask = Image.fromarray(mask.numpy(), mode='L')
         mask = self.mask_transform(mask)
-        return torch.from_numpy(image['pixel_values'][0]), mask
+        return torch.from_numpy(image['pixel_values'][0]), mask.long()
 
 
 # Example usage
@@ -61,9 +61,3 @@ if __name__ == "__main__":
     # Compute the loss
     loss = criterion(logits, mask)
     print(loss.item())
-    
-
-    
-    
-
-    
