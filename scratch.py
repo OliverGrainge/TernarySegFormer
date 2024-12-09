@@ -1,82 +1,60 @@
-"""
+
 import os
-import torch
-import torchvision.transforms as T
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
-from PIL import Image
+import torchvision.transforms as T
 import numpy as np
+from PIL import Image
 
 class CocoSegmentationDataset(Dataset):
-    def __init__(self, root, annotation_file, transform=None):
+    def __init__(self, root, transform=None):
 
         self.root = root
-        self.coco = COCO(annotation_file)
-        self.img_ids = list(self.coco.imgs.keys())
+        self.coco = COCO(os.path.join(root, 'annotations/stuff_val2017.json'))
+        self.image_indexes = list(self.coco.imgs.keys())
         self.transform = transform
 
     def __len__(self):
         return len(self.img_ids)
+    
+    def __getitem__(self, index): 
+        img_id = self.image_indexes[index] 
+        annotations = self.coco.loadAnns(self.coco.getAnnIds(imgIds=img_id))
+        image_info = self.coco.loadImgs(img_id)[0]
+        file_name = f"./coco/images/train2017/{image_info[0]['file_name']}"
+        image = Image.open(file_name).convert('RGB')
 
-    def __getitem__(self, index):
-        # Load image and corresponding annotations
-        img_id = self.img_ids[index]
-        ann_ids = self.coco.getAnnIds(imgIds=img_id, iscrowd=False)
-        anns = self.coco.loadAnns(ann_ids)
-        
-        # Load the image
-        img_info = self.coco.loadImgs(img_id)[0]
-        img_path = os.path.join(self.root, img_info['file_name'])
-        image = Image.open(img_path).convert('RGB')
-        
-        # Create the segmentation mask
-        mask = np.zeros((img_info['height'], img_info['width']), dtype=np.uint8)
-        for ann in anns:
-            mask = np.maximum(mask, self.coco.annToMask(ann) * ann['category_id'])
-        mask = Image.fromarray(mask)
-        
-        # Apply transformations
-        if self.transform:
+        mask = np.zeros((image_info[0]['height'], image_info[0]['width']), dtype=np.uint8)
+        for ann in annotations:
+            rle = self.coco.annToRLE(ann)
+            binary_mask = self.coco.annToMask(ann)
+            mask = np.maximum(mask, binary_mask * ann['category_id']) 
+
+        if self.transform: 
             image = self.transform(image)
-            mask = T.functional.to_tensor(mask)  # Convert mask to tensor
-        else:
-            image = T.functional.to_tensor(image)
             mask = T.functional.to_tensor(mask)
-        
+        #else: 
+        #    image = T.functional.to_tensor(image)
+        #    mask = T.functional.to_tensor(mask)
+
         return image, mask
+
+
 
 # Example usage
 if __name__ == "__main__":
-    data_root = "coco/train2017"
-    annotation_path = "coco/annotations/instances_train2017.json"
+    data_root = "./coco/"
+    dataset = CocoSegmentationDataset(data_root)
+    for i in range(1000):
+        try:
+            image, mask = dataset[i]
+            print(image.shape, mask.shape)
+            
+        except Exception as e:
+            pass
+    
 
-    # Define transformations
-    transforms = T.Compose([
-        T.Resize((256, 256)),
-        T.ToTensor(),
-    ])
+    
+    
 
-    # Create dataset
-    dataset = CocoSegmentationDataset(root=data_root, annotation_file=annotation_path, transform=transforms)
-
-    # Test dataset
-    image, mask = dataset[0]
-    print("Image shape:", image.shape)
-    print("Mask shape:", mask.shape)
-"""
-import torch
-
-from transformers import SegformerForSemanticSegmentation, AutoImageProcessor
-
-x = torch.randn(10, 3, 512, 512)
-segformer_model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
-global_avg_pool = torch.nn.AdaptiveAvgPool2d((2, 2))
-classifier = torch.nn.Linear(1024, 1000)
-
-features = segformer_model.segformer.encoder(x)
-features = features.last_hidden_state 
-print(features.shape)
-f = global_avg_pool(features).flatten(start_dim=1)
-print(f.shape)
-logits = classifier(f)
-print(logits.shape)
+    
