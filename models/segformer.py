@@ -58,6 +58,7 @@ if __name__ == "__main__":
         with torch.no_grad():
             outputs = model(**inputs)
         logits = outputs.logits  # Shape: (batch_size, num_labels, height/4, width/4)
+        print(logits.shape, inputs['pixel_values'].shape)
 
         # Get the predicted segmentation mask
         predicted_mask = torch.argmax(logits, dim=1)  # Shape: (batch_size, height/4, width/4)

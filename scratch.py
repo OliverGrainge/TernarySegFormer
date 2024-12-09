@@ -1,57 +1,66 @@
-
 import os
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
-import torchvision.transforms as T
 import numpy as np
 from PIL import Image
+from torchvision import transforms
+import torch 
+
+from transformers import AutoImageProcessor, SegformerForSemanticSegmentation, SegformerConfig
 
 class CocoSegmentationDataset(Dataset):
-    def __init__(self, root, transform=None):
-
+    def __init__(self, root, split="train"):
+        self.split = split
         self.root = root
-        self.coco = COCO(os.path.join(root, 'annotations/stuff_val2017.json'))
+        self.coco = COCO(os.path.join(root, f'annotations/stuff_{split}2017.json'))
         self.image_indexes = list(self.coco.imgs.keys())
-        self.transform = transform
+        self.max_category_id = max(cat['id'] for cat in self.coco.loadCats(self.coco.getCatIds()))
+        self.image_processor = AutoImageProcessor.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
+        self.mask_transform = transforms.Compose([
+            transforms.Resize((128, 128)),
+            transforms.Lambda(lambda x: torch.from_numpy(np.array(x, dtype=np.uint8))),
+        ])
 
     def __len__(self):
-        return len(self.img_ids)
+        return len(self.image_indexes)
     
     def __getitem__(self, index): 
         img_id = self.image_indexes[index] 
+        print("img_id", img_id)
+        img_id = 25
         annotations = self.coco.loadAnns(self.coco.getAnnIds(imgIds=img_id))
         image_info = self.coco.loadImgs(img_id)[0]
-        file_name = f"./coco/images/train2017/{image_info[0]['file_name']}"
+        file_name = f"./coco/images/{self.split}2017/{image_info['file_name']}"
         image = Image.open(file_name).convert('RGB')
 
-        mask = np.zeros((image_info[0]['height'], image_info[0]['width']), dtype=np.uint8)
+        mask = np.zeros((image_info['height'], image_info['width']), dtype=np.uint8)
         for ann in annotations:
-            rle = self.coco.annToRLE(ann)
             binary_mask = self.coco.annToMask(ann)
             mask = np.maximum(mask, binary_mask * ann['category_id']) 
 
-        if self.transform: 
-            image = self.transform(image)
-            mask = T.functional.to_tensor(mask)
-        #else: 
-        #    image = T.functional.to_tensor(image)
-        #    mask = T.functional.to_tensor(mask)
-
-        return image, mask
-
+        image = self.image_processor(image)
+        mask = torch.from_numpy(mask).unsqueeze(0)
+        mask = Image.fromarray(mask.numpy().squeeze(), mode='L')
+        mask = self.mask_transform(mask)
+        return torch.from_numpy(image['pixel_values'][0]), mask
 
 
 # Example usage
 if __name__ == "__main__":
-    data_root = "./coco/"
-    dataset = CocoSegmentationDataset(data_root)
-    for i in range(1000):
-        try:
-            image, mask = dataset[i]
-            print(image.shape, mask.shape)
-            
-        except Exception as e:
-            pass
+    import torch
+    import torch.nn as nn
+
+    # Example tensors
+    logits = torch.randn(8, 150, 128, 128)  # Network output
+    mask = torch.randint(0, 150, (8, 128, 128))  # Ground truth mask
+    print(logits.shape, mask.shape)
+
+    # Define the loss function
+    criterion = nn.CrossEntropyLoss()
+
+    # Compute the loss
+    loss = criterion(logits, mask)
+    print(loss.item())
     
 
     
