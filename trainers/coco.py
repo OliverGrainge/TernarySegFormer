@@ -71,17 +71,20 @@ class COCOSegmenter(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         images, masks = batch
-        masks = masks.squeeze(1).long()  # Ensure correct shape for CrossEntropyLoss
-        outputs = self(images)
-
-        # Ensure outputs and masks are contiguous before reshaping
-        outputs = outputs.contiguous()
-        masks = masks.contiguous()
-
-        # Reshape outputs and masks
-        print(f"outputs.shape: {outputs.shape}, masks.shape: {masks.shape}")
+        masks = masks.long()
         
-        loss = self.criterion(outputs, masks)
+        # Add debugging info
+        print(f"Unique values in masks: {torch.unique(masks)}")
+        print(f"Mask dtype: {masks.dtype}")
+        
+        outputs = self.segformer_model(images)
+        logits = outputs.logits
+        
+        # Log shapes before computing loss
+        print(f"Logits shape: {logits.shape}")
+        print(f"Masks shape: {masks.shape}")
+        
+        loss = self.criterion(logits, masks)
         self.log('train_loss', loss, prog_bar=True, logger=True)
         return loss
 
